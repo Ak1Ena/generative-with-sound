@@ -1,0 +1,29 @@
+{
+  "name": "rinneai",
+  "version": "1.0.0",
+  "description": "this project is for process Rinne AI",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "npx tsx src/index.ts",
+    "migrate:create": "npx typeorm migration:create --outputJs",
+    "migrate:revert": "npx typeorm migration:revert -d src/db/dataSource.ts",
+    "migrate:generate": "npx typeorm migration:generate -d src/db/dataSource.ts --outputJs",
+    "migrate:up": "npx typeorm migration:run -d src/db/dataSource.ts"
+  },
+  "author": "Ak1Ena",
+  "license": "ISC",
+  "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.40.0",
+    "@google/genai": "^1.47.0",
+    "dotenv": "^17.3.1",
+    "typeorm": "^0.3.28",
+    "typeorm-naming-strategies": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^6.0.2"
+  }
+}
