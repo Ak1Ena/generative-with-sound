@@ -9,7 +9,7 @@ const rl = readline.createInterface({
 });
 
 async function main() {
-  await initialize();
+  // await initialize();
 
   console.log("App started. Type something (or 'exit'):");
 
@@ -22,6 +22,7 @@ async function main() {
       process.exit(0);
     }
 
+    console.time("conversation");
     try {
         const text = await askAi(message)
         for await (const chunk of text) {
@@ -31,6 +32,8 @@ async function main() {
         }
     } catch (err) {
       console.error("Error:", err);
+    } finally {
+      console.timeEnd("conversation");
     }
 
     rl.prompt();
