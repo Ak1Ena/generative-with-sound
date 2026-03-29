@@ -5,18 +5,24 @@ from function.ask_ai import ask_ai
 from function.speak import speak, preload_models
 import config.env as env
 
-def split_into_sentences(text):
-    """Splits text into sentences based on punctuation (., !, ?)."""
-    # This regex looks for sentence-ending punctuation followed by a space or end of string
-    sentences = re.split(r'(?<=[.!?])\s+', text)
-    return [s.strip() for s in sentences if s.strip()]
+# Regex to find complete sentences (ends with punctuation + space or end)
+SENTENCE_PATTERN = re.compile(r'(.+?[.!?]\s+)|(.+?[.!?]$)', re.DOTALL)
+
+async def speak_worker(queue):
+    """Background task that speaks text from the queue."""
+    while True:
+        text = await queue.get()
+        if text is None:  # Poison pill to stop
+            break
+        await speak(text)
+        queue.task_done()
 
 async def main():
     print("RinneAI (Python Only)")
-    
+
     # Pre-download and load models based on .env
     preload_models()
-    
+
     print("\n" + "="*30)
     print(f"System ready using {env.TTS_PROVIDER}. Type something (or 'exit'):")
     print("="*30)
@@ -34,37 +40,39 @@ async def main():
 
             start_time = time.perf_counter()
             try:
-                response_stream = await ask_ai(user_input)
-                
-                full_response = ""
-                sentence_buffer = ""
-                
-                for chunk in response_stream:
+                # Create a queue for non-blocking TTS
+                text_queue = asyncio.Queue()
+                speak_task = asyncio.create_task(speak_worker(text_queue))
+
+                # Stream chunks with smart buffering for natural speech
+                chunk_buffer = ""
+                async for chunk in ask_ai(user_input):
                     if chunk.text:
-                        chunk_text = chunk.text
-                        full_response += chunk_text
-                        sentence_buffer += chunk_text
-                        
-                        # Check if we have a complete sentence in the buffer
-                        # (Ending with . ! or ?)
-                        if any(char in sentence_buffer for char in ".!?"):
-                            # Extract complete sentences from the buffer
-                            parts = re.split(r'(?<=[.!?])\s+', sentence_buffer)
-                            
-                            # If we have more than one part, the first parts are definitely complete
-                            if len(parts) > 1:
-                                for i in range(len(parts) - 1):
-                                    sentence = parts[i].strip()
-                                    if sentence:
-                                        await speak(sentence)
-                                
-                                # The last part remains in the buffer (might be incomplete)
-                                sentence_buffer = parts[-1]
-                
-                # Speak any remaining text in the buffer after stream ends
-                if sentence_buffer.strip():
-                    await speak(sentence_buffer.strip())
-                
+                        chunk_buffer += chunk.text
+
+                        # Find complete sentences in buffer
+                        matches = list(SENTENCE_PATTERN.finditer(chunk_buffer))
+                        if len(matches) > 1:
+                            # Speak all complete sentences except the last (potentially incomplete) part
+                            for match in matches[:-1]:
+                                sentence = match.group().strip()
+                                if sentence:
+                                    text_queue.put_nowait(sentence)
+                            # Keep remaining text in buffer
+                            last_end = matches[-1].end()
+                            chunk_buffer = chunk_buffer[last_end:]
+
+                # Speak remaining buffer
+                if chunk_buffer.strip():
+                    text_queue.put_nowait(chunk_buffer.strip())
+
+                # Wait for all text to be spoken
+                await text_queue.join()
+
+                # Stop the worker
+                text_queue.put_nowait(None)
+                await speak_task
+
             except Exception as e:
                 print(f"Error during AI interaction: {e}")
             finally:

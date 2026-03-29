@@ -2,7 +2,7 @@ import os
 import subprocess
 import asyncio
 import io
-from elevenlabs import ElevenLabs
+from elevenlabs import ElevenLabs, VoiceSettings
 import config.env as env
 
 # Global instances
@@ -83,6 +83,13 @@ async def speak(message: str):
                     text=message,
                     model_id=env.VOICE_MODEL,
                     output_format="mp3_44100_128",
+                    voice_settings=VoiceSettings(
+                        stability=0.5,        # More expressive/emotional (good for tsundere)
+                        similarity_boost=0.75, # Keep voice character
+                        style=0,            # Slight style exaggeration
+                        use_speaker_boost=True,
+                        speed=1
+                    ),
                 )
                 audio_data = b"".join(audio_stream)
                 play_audio_with_ffplay(audio_data)
