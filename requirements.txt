@@ -9,6 +9,9 @@ google-genai
 elevenlabs
 python-dotenv
 
+# Model Providers
+ollama
+
 # Audio and Utilities
 pydub
 pyaudio
