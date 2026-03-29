@@ -1,0 +1,28 @@
+# Core AI Stack (CPU-only for stability on Windows)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.5.1
+torchaudio==2.5.1
+torchvision==0.20.1
+
+# Chat and Cloud TTS
+google-genai
+elevenlabs
+python-dotenv
+
+# Audio and Utilities
+pydub
+pyaudio
+soundfile
+simplejson
+sortedcontainers
+Pillow
+tqdm
+requests
+
+# Local Qwen-TTS stack
+huggingface_hub
+qwen-tts
+modelscope
+addict
+yapf
+datasets
