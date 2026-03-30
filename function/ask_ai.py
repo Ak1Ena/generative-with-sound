@@ -25,7 +25,7 @@ def _get_ollama_async_client():
     return AsyncClient(host=OLLAMA_BASE_URL)
 
 
-async def ask_ai(message: str):
+async def ask_ai(message: str, image: bytes = None):
     """
     Generate a response from the configured AI model.
 
@@ -38,26 +38,31 @@ async def ask_ai(message: str):
     provider = MODEL_PROVIDER.lower()
 
     if provider == 'ollama':
-        async for chunk in _ask_ollama(message):
+        async for chunk in _ask_ollama(message, image):
             yield chunk
     elif provider == 'gemini':
-        async for chunk in _ask_gemini(message):
+        async for chunk in _ask_gemini(message, image):
             yield chunk
     else:
         raise ValueError(f"Unknown MODEL_PROVIDER: {provider}. Must be 'ollama' or 'gemini'.")
 
 
-async def _ask_gemini(message: str):
+async def _ask_gemini(message: str, image: bytes = None):
     """Generate response using Google Gemini API."""
+    from google.genai import types
     client = _get_gemini_client()
 
     class GeminiChunk:
         def __init__(self, text):
             self.text = text
 
+    contents = [message]
+    if image:
+        contents.append(types.Part.from_bytes(data=image, mime_type="image/jpeg"))
+
     response_stream = client.models.generate_content_stream(
         model=MODEL,
-        contents=message,
+        contents=contents,
         config={
             'system_instruction': prompt,
         }
@@ -68,7 +73,7 @@ async def _ask_gemini(message: str):
             yield GeminiChunk(chunk.text)
 
 
-async def _ask_ollama(message: str):
+async def _ask_ollama(message: str, image: bytes = None):
     """Generate response using Ollama API (async streaming)."""
     client = _get_ollama_async_client()
 
@@ -76,11 +81,15 @@ async def _ask_ollama(message: str):
         def __init__(self, text):
             self.text = text
 
+    user_message = {'role': 'user', 'content': message}
+    if image:
+        user_message['images'] = [image]
+
     stream = await client.chat(
         model=MODEL,
         messages=[
             {'role': 'system', 'content': prompt},
-            {'role': 'user', 'content': message},
+            user_message,
         ],
         stream=True,
     )
