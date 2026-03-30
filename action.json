@@ -1,0 +1,11 @@
+[
+    {
+        "name": "see",
+        "description": "Capture the screen to see what is happening or answer questions about the screen.",
+        "args": {
+            "prompt": "string"
+        },
+        "function": "see_action",
+        "location": "function.actions.capture_screen"
+    }
+]
