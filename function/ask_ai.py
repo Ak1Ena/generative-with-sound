@@ -3,8 +3,20 @@ from config.env import (
     MODEL,
     GEMINI_API_KEY,
     OLLAMA_BASE_URL,
+    OPENAI_API_KEY,
+    OPENAI_BASE_URL,
 )
 from config.prompt import prompt
+import base64
+
+
+def _get_openai_client():
+    """Returns the OpenAI-compatible client for model interactions."""
+    from openai import AsyncOpenAI
+    return AsyncOpenAI(
+        base_url=OPENAI_BASE_URL,
+        api_key=OPENAI_API_KEY,
+    )
 
 
 def _get_gemini_client():
@@ -32,6 +44,7 @@ async def ask_ai(message: str, image: bytes = None):
     Supports:
     - 'ollama': Local or remote Ollama (e.g., qwen3, qwen3-vl, llama3.2)
     - 'gemini': Google Gemini API
+    - 'openai': OpenAI-compatible API (e.g., OpenRouter, DeepSeek)
     
     Yields chunks asynchronously as they arrive.
     """
@@ -43,8 +56,49 @@ async def ask_ai(message: str, image: bytes = None):
     elif provider == 'gemini':
         async for chunk in _ask_gemini(message, image):
             yield chunk
+    elif provider == 'openai' or provider == 'openrouter':
+        async for chunk in _ask_openai(message, image):
+            yield chunk
     else:
-        raise ValueError(f"Unknown MODEL_PROVIDER: {provider}. Must be 'ollama' or 'gemini'.")
+        raise ValueError(f"Unknown MODEL_PROVIDER: {provider}. Must be 'ollama', 'gemini', or 'openai'.")
+
+
+async def _ask_openai(message: str, image: bytes = None):
+    """Generate response using OpenAI-compatible API."""
+    client = _get_openai_client()
+
+    class OpenAIChunk:
+        def __init__(self, text):
+            self.text = text
+
+    messages = [
+        {"role": "system", "content": prompt},
+    ]
+
+    if image:
+        base64_image = base64.b64encode(image).decode('utf-8')
+        user_content = [
+            {"type": "text", "text": message},
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/jpeg;base64,{base64_image}"
+                }
+            }
+        ]
+        messages.append({"role": "user", "content": user_content})
+    else:
+        messages.append({"role": "user", "content": message})
+
+    response = await client.chat.completions.create(
+        model=MODEL,
+        messages=messages,
+        stream=True,
+    )
+
+    async for chunk in response:
+        if chunk.choices and chunk.choices[0].delta.content:
+            yield OpenAIChunk(chunk.choices[0].delta.content)
 
 
 async def _ask_gemini(message: str, image: bytes = None):

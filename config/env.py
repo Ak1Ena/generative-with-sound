@@ -8,12 +8,13 @@ load_dotenv()
 # Model Provider Configuration
 # ===========================================
 
-# Model Provider: 'ollama' or 'gemini'
+# Model Provider: 'ollama', 'gemini', or 'openai'
 MODEL_PROVIDER = os.getenv('MODEL_PROVIDER', 'ollama')
 
 # Model name based on provider
 # - Ollama: qwen3, qwen3-vl:235b-cloud, llama3.2, mistral, etc.
 # - Gemini: gemini-2.0-flash, gemini-1.5-pro, etc.
+# - OpenAI Compatible: google/gemini-2.0-flash-exp:free, openai/gpt-4o, etc.
 MODEL = os.getenv('MODEL', 'qwen3')
 
 # ===========================================
@@ -24,6 +25,12 @@ GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
 # Legacy support for BRIAN_CORE_API_KEY
 if not GEMINI_API_KEY:
     GEMINI_API_KEY = os.getenv('BRIAN_CORE_API_KEY', '')
+
+# ===========================================
+# OpenAI Compatible Configuration (OpenRouter, DeepSeek, etc.)
+# ===========================================
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL', 'https://openrouter.ai/api/v1')
 
 # ===========================================
 # Ollama Configuration
