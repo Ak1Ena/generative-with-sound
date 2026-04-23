@@ -3,18 +3,19 @@ from config.env import (
     MODEL,
     GEMINI_API_KEY,
     OLLAMA_BASE_URL,
-    OPENROUTER_API_KEY,
+    OPENAI_API_KEY,
+    OPENAI_BASE_URL,
 )
 from config.prompt import prompt
 import base64
 
 
-def _get_openrouter_client():
-    """Returns the OpenRouter client for model interactions."""
+def _get_openai_client():
+    """Returns the OpenAI-compatible client for model interactions."""
     from openai import AsyncOpenAI
     return AsyncOpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=OPENROUTER_API_KEY,
+        base_url=OPENAI_BASE_URL,
+        api_key=OPENAI_API_KEY,
     )
 
 
@@ -43,7 +44,7 @@ async def ask_ai(message: str, image: bytes = None):
     Supports:
     - 'ollama': Local or remote Ollama (e.g., qwen3, qwen3-vl, llama3.2)
     - 'gemini': Google Gemini API
-    - 'openrouter': OpenRouter API (OpenAI-compatible)
+    - 'openai': OpenAI-compatible API (e.g., OpenRouter, DeepSeek)
     
     Yields chunks asynchronously as they arrive.
     """
@@ -55,18 +56,18 @@ async def ask_ai(message: str, image: bytes = None):
     elif provider == 'gemini':
         async for chunk in _ask_gemini(message, image):
             yield chunk
-    elif provider == 'openrouter':
-        async for chunk in _ask_openrouter(message, image):
+    elif provider == 'openai' or provider == 'openrouter':
+        async for chunk in _ask_openai(message, image):
             yield chunk
     else:
-        raise ValueError(f"Unknown MODEL_PROVIDER: {provider}. Must be 'ollama', 'gemini', or 'openrouter'.")
+        raise ValueError(f"Unknown MODEL_PROVIDER: {provider}. Must be 'ollama', 'gemini', or 'openai'.")
 
 
-async def _ask_openrouter(message: str, image: bytes = None):
-    """Generate response using OpenRouter API."""
-    client = _get_openrouter_client()
+async def _ask_openai(message: str, image: bytes = None):
+    """Generate response using OpenAI-compatible API."""
+    client = _get_openai_client()
 
-    class OpenRouterChunk:
+    class OpenAIChunk:
         def __init__(self, text):
             self.text = text
 
@@ -97,7 +98,7 @@ async def _ask_openrouter(message: str, image: bytes = None):
 
     async for chunk in response:
         if chunk.choices and chunk.choices[0].delta.content:
-            yield OpenRouterChunk(chunk.choices[0].delta.content)
+            yield OpenAIChunk(chunk.choices[0].delta.content)
 
 
 async def _ask_gemini(message: str, image: bytes = None):
